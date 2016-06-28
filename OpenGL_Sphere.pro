@@ -13,8 +13,12 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        dialog.cpp
+        dialog.cpp \
+    sphere.cpp
 
-HEADERS  += dialog.h
+HEADERS  += dialog.h \
+    sphere.h
 
 FORMS    += dialog.ui
+
+INCLUDEPATH += /usr/local/include
