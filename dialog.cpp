@@ -1,21 +1,26 @@
 #include "dialog.h"
 #include "ui_dialog.h"
+#include "dialogeventhandlers.h"
 
 #include <array>
 
 #include <QTimer>
 #include <QOpenGLFunctions>
 #include <QWidget>
+#include <QQuaternion>
 #include <QDebug>
 
 #include <glm/glm.hpp>
+
+constexpr float CAMERA_SPEED = 3.0f;
 
 Dialog::Dialog(QWidget *parent)
     : QOpenGLWidget(parent)
     , ui(new Ui::Dialog)
     , m_view()
     , m_cubeIndices(QOpenGLBuffer::IndexBuffer)
-    , m_sphere(16,8)
+    , m_sphere(3,2)
+    , m_eventHandler(new EventHandler::NoopEventHandler())
 {
 
     //make the window appear
@@ -39,9 +44,9 @@ static const char *vertexShaderSourceCore =
     "#version 120\n"
     "attribute vec4 vertex;\n"
     "uniform mat4 projMatrix;\n"
-    "uniform mat4 viewMatrix;\n"
+    "uniform mat4 mvMatrix;\n"
     "void main() {\n"
-    "   gl_Position = projMatrix * viewMatrix * vertex;\n"
+    "   gl_Position = projMatrix * mvMatrix * vertex;\n"
     "}\n";
 
 static const char *fragmentShaderSourceCore =
@@ -49,6 +54,11 @@ static const char *fragmentShaderSourceCore =
     "void main() {\n"
     "   gl_FragColor = vec4(0, 1.0, 1.0, 1.0);\n"
     "}\n";
+
+bool Dialog::event(QEvent* event)
+{
+    return m_eventHandler->handleEvent(event) || QOpenGLWidget::event(event);
+}
 
 void Dialog::initializeGL()
 {
@@ -86,6 +96,11 @@ void Dialog::initializeGL()
     m_program.setAttributeBuffer("vertex", GL_FLOAT, 0, 3, sizeof(glm::vec3));
 
     m_program.release();
+
+    // Add renderer event chain
+    m_eventHandler.reset(new KeyEventHandler(*this));
+    m_eventHandler->chain(std::make_shared<KeyEventPan>(*this))
+        ->chain(std::make_shared<MouseWheelEventZoom>(*this));
 }
 
 void Dialog::paintGL()
@@ -103,7 +118,7 @@ void Dialog::paintGL()
     QOpenGLVertexArrayObject::Binder vaoBinder(&m_vao);
     m_program.bind();
     m_program.setUniformValue("projMatrix", m_proj);
-    m_program.setUniformValue("viewMatrix", m_view);
+    m_program.setUniformValue("mvMatrix", m_view * m_model);
 
 
     // Draw cube geometry using indices from VBO 1
@@ -114,6 +129,15 @@ void Dialog::paintGL()
 
 void Dialog::nextFrame()
 {
+    // Removing this condition causes the model to shrink
+    QVector3D axis(-m_cameraVelocity.y(), m_cameraVelocity.x(), 0.0f);
+    if (!axis.isNull())
+    {
+        QMatrix4x4 rot;
+        rot.rotate(CAMERA_SPEED, axis);
+        m_model = rot * m_model;
+    }
+
     //update the window (this will trigger paintEvent)
     update();
 }

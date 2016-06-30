@@ -30,6 +30,9 @@ private slots:
     void nextFrame();
 
 private:
+    //handle key presses
+    bool event(QEvent *event);
+
     void initializeGL();
     void paintGL();
 
@@ -40,6 +43,7 @@ private:
 
     QMatrix4x4 m_view;
     QMatrix4x4 m_proj;
+    QMatrix4x4 m_model;
 
     QOpenGLShaderProgram m_program;
     QOpenGLVertexArrayObject m_vao;
@@ -48,6 +52,13 @@ private:
 
     Sphere m_sphere;
 
+    QVector3D m_cameraVelocity;
+
+    std::unique_ptr<EventHandler> m_eventHandler;
+
+    class KeyEventHandler;
+    class KeyEventPan;
+    class MouseWheelEventZoom;
 };
 
 #endif // DIALOG_H
