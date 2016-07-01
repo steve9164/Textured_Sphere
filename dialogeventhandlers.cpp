@@ -3,7 +3,7 @@
 #include <QKeyEvent>
 #include <QDebug>
 
-constexpr float CAMERA_ZOOM_FACTOR = 150.0f;
+constexpr float CAMERA_ZOOM_FACTOR = 500.0f;
 
 Dialog::KeyEventPan::KeyEventPan(Dialog& dialog)
     : m_dialog(dialog)

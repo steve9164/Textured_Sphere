@@ -1,8 +1,8 @@
-#include "sphere.h"
+#include "texturedsphere.h"
 #include <cmath>
 #include <iostream>
 
-Sphere::Sphere(int meridians, int latitudes)
+TexturedSphere::TexturedSphere(int meridians, int latitudes)
     : m_meridians(meridians), m_latitudes(latitudes), m_triangleCount(0)
 {
 	// Add 1 to meridians because the prime meridian is in there twice
@@ -12,22 +12,23 @@ Sphere::Sphere(int meridians, int latitudes)
 	{
 		for (size_t j = 0; j < m_latitudes + 2; j++)
 		{
+            // texCoord in the range [(0,0), (1,1)]
+            glm::vec2 texCoord((float)i / m_meridians, (float)j / (m_latitudes+1));
             // theta = longitude from 0 to 2pi
             // phi = latitude from -pi/2 to pi/2
 			double theta, phi;
-			theta = 2*M_PI * i/(double)m_meridians;
-			phi = M_PI * j/(double)(m_latitudes+1) - M_PI_2;
-			float x,y,z;
-			y = (float)std::sin(phi);
-			x = (float)std::cos(phi) * std::cos(theta);
-			z = (float)std::cos(phi) * std::sin(theta);
+            theta = 2*M_PI * texCoord.x;
+            phi = M_PI * texCoord.y - M_PI_2;
+            glm::vec3 pos;
+            pos.y = (float)std::sin(phi);
+            pos.x = (float)std::cos(phi) * std::cos(theta);
+            pos.z = (float)std::cos(phi) * std::sin(theta);
 
-            m_vertices.push_back(glm::vec3(x,y,z));
+            m_vertices.push_back({pos, texCoord});
 		}
 	}
 
-	// Output polygons:
-	// Polygons are for blender testing
+    // Calculate triangle indices
 
 	for (size_t i = 0; i < m_meridians; i++)
 	{

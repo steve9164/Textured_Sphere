@@ -8,6 +8,9 @@
 #include <QOpenGLFunctions>
 #include <QWidget>
 #include <QQuaternion>
+#include <QOpenGLTexture>
+#include <QImage>
+
 #include <QDebug>
 
 #include <glm/glm.hpp>
@@ -19,13 +22,12 @@ Dialog::Dialog(QWidget *parent)
     , ui(new Ui::Dialog)
     , m_view()
     , m_cubeIndices(QOpenGLBuffer::IndexBuffer)
-    , m_sphere(3,2)
+    , m_sphere(100, 100)
     , m_eventHandler(new EventHandler::NoopEventHandler())
 {
 
     //make the window appear
     ui->setupUi(this);
-    this->resize(1200, 800);
 
     //setup timer
     m_timer = new QTimer(this);
@@ -40,20 +42,34 @@ Dialog::~Dialog()
 }
 
 
-static const char *vertexShaderSourceCore =
-    "#version 120\n"
-    "attribute vec4 vertex;\n"
-    "uniform mat4 projMatrix;\n"
-    "uniform mat4 mvMatrix;\n"
-    "void main() {\n"
-    "   gl_Position = projMatrix * mvMatrix * vertex;\n"
-    "}\n";
+// Use C++11 raw string literals for GLSL shader source code
 
-static const char *fragmentShaderSourceCore =
-    "#version 120\n"
-    "void main() {\n"
-    "   gl_FragColor = vec4(0, 1.0, 1.0, 1.0);\n"
-    "}\n";
+static const char *vertexShaderSourceCore = R"(
+    #version 120
+    uniform mat4 projMatrix;
+    uniform mat4 mvMatrix;
+
+    attribute vec4 vertex;
+    attribute vec2 in_texcoord;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+       gl_Position = projMatrix * mvMatrix * vertex;
+       v_texcoord = in_texcoord;
+    }
+)";
+
+static const char *fragmentShaderSourceCore = R"(
+    #version 120
+    uniform sampler2D texture;
+
+    varying vec2 v_texcoord;
+
+    void main() {
+       gl_FragColor = texture2D(texture, v_texcoord);
+    }
+)";
 
 bool Dialog::event(QEvent* event)
 {
@@ -64,7 +80,7 @@ void Dialog::initializeGL()
 {
 
     m_view.setToIdentity();
-    m_view.translate(0, 0, -10);
+    m_view.translate(0, 0, -3);
 
     glClearColor(0, 0, 0, 1);
 
@@ -79,13 +95,15 @@ void Dialog::initializeGL()
     QOpenGLVertexArrayObject::Binder vaoBinder(&m_vao);
 
 
-    std::vector<glm::vec3> vertices = m_sphere.getVertices();
-    std::vector<unsigned short> vertexIndices = m_sphere.getIndices();
+    const std::vector<VertexData>& vertices = m_sphere.getVertexData();
+    const std::vector<unsigned short>& vertexIndices = m_sphere.getIndices();
+
+    static_assert(sizeof(VertexData) == 5*sizeof(float), "VertexData layout not as expected");
 
     // Setup our vertex buffer object.
     m_cubeVertices.create();
     m_cubeVertices.bind();
-    m_cubeVertices.allocate(vertices.data(), vertices.size() * sizeof(glm::vec3));
+    m_cubeVertices.allocate(vertices.data(), vertices.size() * sizeof(VertexData));
 
     m_cubeIndices.create();
     m_cubeIndices.bind();
@@ -93,9 +111,17 @@ void Dialog::initializeGL()
 
     // Tell OpenGL programmable pipeline how to locate vertex position data
     m_program.enableAttributeArray("vertex");
-    m_program.setAttributeBuffer("vertex", GL_FLOAT, 0, 3, sizeof(glm::vec3));
+    m_program.setAttributeBuffer("vertex", GL_FLOAT, 0, 3, sizeof(VertexData));
+
+    m_program.enableAttributeArray("in_texcoord");
+    m_program.setAttributeBuffer("in_texcoord", GL_FLOAT, sizeof(glm::vec3), 2, sizeof(VertexData));
 
     m_program.release();
+
+    // Load textures
+    m_texture = new QOpenGLTexture(QImage("./map1.png").mirrored(true, true));
+    m_texture->setMinificationFilter(QOpenGLTexture::Nearest);
+    m_texture->setMagnificationFilter(QOpenGLTexture::Linear);
 
     // Add renderer event chain
     m_eventHandler.reset(new KeyEventHandler(*this));
@@ -119,6 +145,9 @@ void Dialog::paintGL()
     m_program.bind();
     m_program.setUniformValue("projMatrix", m_proj);
     m_program.setUniformValue("mvMatrix", m_view * m_model);
+    m_texture->bind();
+    // Texture unit 0
+    m_program.setUniformValue("texture", 0);
 
 
     // Draw cube geometry using indices from VBO 1
@@ -130,13 +159,24 @@ void Dialog::paintGL()
 void Dialog::nextFrame()
 {
     // Removing this condition causes the model to shrink
-    QVector3D axis(-m_cameraVelocity.y(), m_cameraVelocity.x(), 0.0f);
-    if (!axis.isNull())
+    if (m_cameraVelocity.x() != 0.0f)
+    {
+        m_model.rotate(CAMERA_SPEED, 0.0f, m_cameraVelocity.x(), 0.0f);
+    }
+    if (m_cameraVelocity.y() != 0.0f)
     {
         QMatrix4x4 rot;
-        rot.rotate(CAMERA_SPEED, axis);
+        rot.rotate(CAMERA_SPEED, -m_cameraVelocity.y(), 0.0f, 0.0f);
         m_model = rot * m_model;
     }
+
+//    QVector3D axis(-m_cameraVelocity.y(), m_cameraVelocity.x(), 0.0f);
+//    if (!axis.isNull())
+//    {
+//        QMatrix4x4 rot;
+//        rot.rotate(CAMERA_SPEED, axis);
+//        m_model = rot * m_model;
+//    }
 
     //update the window (this will trigger paintEvent)
     update();

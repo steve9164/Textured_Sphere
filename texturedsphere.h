@@ -5,13 +5,19 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-class Sphere
+struct VertexData
+{
+    glm::vec3 position;
+    glm::vec2 texCoord;
+};
+
+class TexturedSphere
 {
 public:
-    Sphere(int meridians, int latitudes);
+    TexturedSphere(int meridians, int latitudes);
 	//~Sphere();
 
-    const std::vector<glm::vec3>& getVertices()
+    const std::vector<VertexData>& getVertexData()
     { return m_vertices; }
 
     const std::vector<unsigned short>& getIndices()
@@ -23,7 +29,7 @@ public:
 private:
     unsigned int m_meridians;
     unsigned int m_latitudes;
-	std::vector<glm::vec3> m_vertices;
+    std::vector<VertexData> m_vertices;
     std::vector<unsigned short> m_indices;
     unsigned int m_triangleCount;
 

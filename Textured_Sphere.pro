@@ -14,14 +14,14 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         dialog.cpp \
-    sphere.cpp \
     dialogeventhandlers.cpp \
-    eventhandler.cpp
+    eventhandler.cpp \
+    texturedsphere.cpp
 
 HEADERS  += dialog.h \
-    sphere.h \
     dialogeventhandlers.h \
-    eventhandler.h
+    eventhandler.h \
+    texturedsphere.h
 
 FORMS    += dialog.ui
 

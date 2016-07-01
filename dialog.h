@@ -8,8 +8,9 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
+#include <QOpenGLTexture>
 
-#include "sphere.h"
+#include "texturedsphere.h"
 
 class EventHandler;
 
@@ -50,7 +51,9 @@ private:
     QOpenGLBuffer m_cubeVertices;
     QOpenGLBuffer m_cubeIndices;
 
-    Sphere m_sphere;
+    TexturedSphere m_sphere;
+
+    QOpenGLTexture* m_texture;
 
     QVector3D m_cameraVelocity;
 
